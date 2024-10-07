@@ -13,10 +13,7 @@ public class SatelliteRepository(AppDbContext context) : ISatelliteRepository
 
     public void Create(Satellite satellite)
     {
-        if (satellite == null)
-        {
-            throw new ArgumentNullException(nameof(satellite));
-        }
+        ArgumentNullException.ThrowIfNull(satellite);
 
         context.Satellites.Add(satellite);
     }
