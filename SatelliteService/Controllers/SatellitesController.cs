@@ -26,6 +26,7 @@ public class SatellitesController(ISatelliteRepository satelliteRepository) : Co
         return result;
     }
 
+
     [HttpPost]
     public ActionResult<SatelliteReadDto> Create(SatelliteCreateDto satelliteCreateDto)
     {
