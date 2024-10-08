@@ -9,12 +9,20 @@ public static class SatelliteMapperExtensions
     public static IEnumerable<SatelliteReadDto> ToReadDtos(this IEnumerable<Satellite> satellites) =>
         satellites.Select(satellite => satellite.ToReadDto());
 
-    private static SatelliteReadDto ToReadDto(this Satellite satellite) =>
+    public static SatelliteReadDto ToReadDto(this Satellite satellite) =>
         new()
         {
             Id = satellite.Id,
             Name = satellite.Name,
             Type = satellite.Type,
             Orbit = satellite.Orbit
+        };
+    
+    public static Satellite ToModel(this SatelliteCreateDto satelliteCreateDto) =>
+        new()
+        {
+            Name = satelliteCreateDto.Name,
+            Type = satelliteCreateDto.Type,
+            Orbit = satelliteCreateDto.Orbit
         };
 }

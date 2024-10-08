@@ -6,12 +6,12 @@ public record Satellite
 {
     [Key]
     [Required]
-    public required int Id { get; init; }
+    public int Id { get; init; }
 
     [Required]
-    public required string Name { get; init; }
+    public string? Name { get; init; }
 
-    public required string Type { get; init; }
+    public string? Type { get; init; }
 
-    public required string Orbit { get; init; }
+    public string? Orbit { get; init; }
 }
