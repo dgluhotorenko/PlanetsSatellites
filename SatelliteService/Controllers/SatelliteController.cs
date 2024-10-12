@@ -7,7 +7,7 @@ namespace SatelliteService.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class SatellitesController(ISatelliteRepository satelliteRepository) : ControllerBase
+public class SatelliteController(ISatelliteRepository satelliteRepository) : ControllerBase
 {
     [HttpGet]
     public ActionResult<IEnumerable<SatelliteReadDto>> GetAll() => Ok(satelliteRepository.GetAll().ToReadDtos());

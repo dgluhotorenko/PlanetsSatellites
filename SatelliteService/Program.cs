@@ -14,6 +14,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseInMemoryDatabase("SatelliteDb");
 });
 builder.Services.AddScoped<ISatelliteRepository, SatelliteRepository>();
+builder.WebHost.UseUrls("http://0.0.0.0:5000 ");
 
 var app = builder.Build();
 
