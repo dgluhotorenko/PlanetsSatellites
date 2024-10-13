@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: satellite-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: satelliteservice
+  template:
+    metadata:
+      labels:
+        app: satelliteservice
+    spec:
+      containers:
+        - name: satelliteservice
+          image: dgluhotorenko/satelliteservice:latest
