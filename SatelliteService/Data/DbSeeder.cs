@@ -12,7 +12,7 @@ public static class DbSeeder
 
         if (context != null && !context.Satellites.Any())
         {
-            Console.WriteLine("Seeding database...");
+            Console.WriteLine("==> Seeding database...");
 
             context.Satellites.AddRange(
                 new Satellite { Id = 1, Name = "Space Station", Type = "Weather", Orbit = "Medium Earth" },

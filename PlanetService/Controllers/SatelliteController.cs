@@ -6,15 +6,10 @@ namespace PlanetService.Controllers;
 [ApiController]
 public class SatelliteController : ControllerBase
 {
-    public SatelliteController()
-    {
-        
-    }
-    
     [HttpPost]
     public IActionResult TestInbound()
     {
-        Console.WriteLine("Inbound POST PlanetService");
+        Console.WriteLine("==> Inbound POST PlanetService");
 
         return Ok("TestInbound from SatelliteController");
     }
