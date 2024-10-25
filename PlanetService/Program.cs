@@ -16,7 +16,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(o => { o.SwaggerEndpoint("/swagger/v1/swagger.json", "PlanetService v1"); });
 }
 
-app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthorization();
 app.MapControllers();

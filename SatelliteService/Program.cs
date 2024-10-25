@@ -30,7 +30,6 @@ if (app.Environment.IsDevelopment())
 
 Console.WriteLine($"==> PlanetService endpoint - {app.Configuration["PlanetService"]}");
 
-app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthorization();
 app.MapControllers();

@@ -1,31 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: satellite-depl
+  name: planet-depl
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: satelliteservice
+      app: planetservice
   template:
     metadata:
       labels:
-        app: satelliteservice
+        app: planetservice
     spec:
       containers:
-        - name: satelliteservice
-          image: dgluhotorenko/satelliteservice:latest
+        - name: planetservice
+          image: dgluhotorenko/planetservice:latest
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: satellite-clusterip-service
+  name: planet-clusterip-service
 spec:
   type: ClusterIP
   selector:
-    app: satelliteservice
+    app: planetservice
   ports:
-  - name: satelliteservice
+  - name: planetservice
     protocol: TCP
     port: 80
-    targetPort: 5000 
+    targetPort: 6000 
