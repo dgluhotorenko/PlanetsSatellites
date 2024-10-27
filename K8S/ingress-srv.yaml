@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-service
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: 'true'
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: planetsatellitessevice.com
+      http:
+        paths:
+          - path: /api/satellite
+            pathType: Prefix
+            backend:
+              service:
+                name: satellite-clusterip-service
+                port:
+                  number: 80
+          - path: /api/p/satellite
+            pathType: Prefix
+            backend:
+              service:
+                name: planet-clusterip-service
+                port:
+                  number: 80
