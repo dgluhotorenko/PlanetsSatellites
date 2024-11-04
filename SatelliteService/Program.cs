@@ -5,22 +5,32 @@ using SatelliteService.SyncDataServices.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-// builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
-builder.Services.AddDbContext<AppDbContext>(options =>
+
+if (builder.Environment.IsProduction())
 {
-    options.UseInMemoryDatabase("SatelliteDb");
-});
+    Console.WriteLine($"==> Using MS SQL Server");
+    builder.Services.AddDbContext<AppDbContext>(options =>
+    {
+        options.UseSqlServer(builder.Configuration.GetConnectionString("SatelliteDbConnection"));
+    });
+}
+else
+{
+    Console.WriteLine($"==> Using InMemory DB");
+    builder.Services.AddDbContext<AppDbContext>(options =>
+    {
+        options.UseInMemoryDatabase("SatelliteDb");
+    });
+}
+
 builder.Services.AddScoped<ISatelliteRepository, SatelliteRepository>();
 builder.Services.AddHttpClient<IPlanetDataClient, HttpPlanetDataClient>();
-builder.WebHost.UseUrls("http://0.0.0.0:5000 ");
+builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -34,7 +44,6 @@ app.UseRouting();
 app.UseAuthorization();
 app.MapControllers();
 
-// pre-seed the database, not for prod
-DbSeeder.Seed(app);
+DbSeeder.Seed(app, app.Environment.IsProduction());
 
 app.Run();
