@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using SatelliteService.Models;
+using PlanetService.Models;
 
-namespace SatelliteService.Data;
+namespace PlanetService.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    public DbSet<Satellite> Satellites { get; init; }
+    public DbSet<Planet> Planets { get; init; }
 }

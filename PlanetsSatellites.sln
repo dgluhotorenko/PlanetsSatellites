@@ -1,8 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SatelliteService", "SatelliteService\SatelliteService.csproj", "{A94D709F-63E8-402E-BD41-CFF37557A278}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlanetService", "PlanetService\PlanetService.csproj", "{A94D709F-63E8-402E-BD41-CFF37557A278}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlanetService", "PlanetService\PlanetService.csproj", "{E1523DA2-324C-4427-9B42-B85FDEF4C953}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SatelliteService", "SatelliteService\SatelliteService.csproj", "{E1523DA2-324C-4427-9B42-B85FDEF4C953}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

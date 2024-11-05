@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using SatelliteService.Models;
+using PlanetService.Models;
 
-namespace SatelliteService.Data;
+namespace PlanetService.Data;
 
 public static class DbSeeder
 {
@@ -24,15 +24,16 @@ public static class DbSeeder
             }
         }
 
-        if (context != null && !context.Satellites.Any())
+        if (context != null && !context.Planets.Any())
         {
             Console.WriteLine("==> Seeding database...");
 
-            context.Satellites.AddRange(
-                new Satellite { Name = "Space Station", Type = "Weather", Orbit = "Medium Earth" },
-                new Satellite { Name = "Satcom", Type = "Communications", Orbit = "Geostationary" },
-                new Satellite { Name = "Echo ", Type = "Observation", Orbit = "Geosynchronous" },
-                new Satellite { Name = "Explorer ", Type = "Navigation", Orbit = "Sun-synchronous" }
+            context.Planets.AddRange(
+                new Planet { Name = "Mercury", Mass = 0.055, Radius = 2439.7 },
+                new Planet { Name = "Venus", Mass = 0.815, Radius = 6051.8 },
+                new Planet { Name = "Earth", Mass = 1.0, Radius = 6371.0 },
+                new Planet { Name = "Mars", Mass = 0.107, Radius = 3389.5 },
+                new Planet { Name = "Jupiter", Mass = 317.8, Radius = 69911.0 }
             );
 
             context.SaveChanges();

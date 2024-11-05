@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mssql-satellite-depl
+  name: mssql-planet-depl
 spec:
   replicas: 1
   selector:

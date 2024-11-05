@@ -10,17 +10,17 @@ spec:
     - host: planetsatellitessevice.com
       http:
         paths:
-          - path: /api/satellite
-            pathType: Prefix
-            backend:
-              service:
-                name: satellite-clusterip-service
-                port:
-                  number: 80
-          - path: /api/p/satellite
+          - path: /api/planet
             pathType: Prefix
             backend:
               service:
                 name: planet-clusterip-service
+                port:
+                  number: 80
+          - path: /api/p/planet
+            pathType: Prefix
+            backend:
+              service:
+                name: satellite-clusterip-service
                 port:
                   number: 80

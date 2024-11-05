@@ -28,4 +28,4 @@ spec:
   - name: planetservice
     protocol: TCP
     port: 80
-    targetPort: 6000 
+    targetPort: 5000
