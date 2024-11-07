@@ -38,7 +38,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(o => { o.SwaggerEndpoint("/swagger/v1/swagger.json", "PlanetService v1"); });
 }
 
-Console.WriteLine($"==> PlanetService endpoint - {app.Configuration["PlanetService"]}");
+Console.WriteLine($"==> PlanetService endpoint - {app.Configuration["SatelliteService"]}");
 
 app.UseRouting();
 app.UseAuthorization();
