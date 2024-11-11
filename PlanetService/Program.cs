@@ -41,9 +41,7 @@ if (app.Environment.IsDevelopment())
 Console.WriteLine($"==> PlanetService endpoint - {app.Configuration["SatelliteService"]}");
 
 app.UseRouting();
-app.UseAuthorization();
+// app.UseAuthorization();
 app.MapControllers();
-
 DbSeeder.Seed(app, app.Environment.IsProduction());
-
 app.Run();

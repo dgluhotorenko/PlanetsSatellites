@@ -1,14 +1,17 @@
+using Microsoft.EntityFrameworkCore;
+using SatelliteService.Data;
+using SatelliteService.Data.Abstract;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
+builder.Services.AddDbContext<AppDbContext>(options => { options.UseInMemoryDatabase("SatelliteDb"); });
+builder.Services.AddScoped<ISatelliteRepository, SatelliteRepository>();
 builder.WebHost.UseUrls("http://0.0.0.0:6000");
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -17,7 +20,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
-app.UseAuthorization();
+// app.UseAuthorization();
 app.MapControllers();
-
 app.Run();
