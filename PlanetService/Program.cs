@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using PlanetService.AsyncDataServices;
+using PlanetService.AsyncDataServices.Abstract;
 using PlanetService.Data;
 using PlanetService.Data.Abstract;
 using PlanetService.SyncDataServices.Http;
+using PlanetService.SyncDataServices.Http.Abstract;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,7 +29,8 @@ else
 }
 
 builder.Services.AddScoped<IPlanetRepository, PlanetRepository>();
-builder.Services.AddHttpClient<IPlanetDataClient, HttpPlanetDataClient>();
+builder.Services.AddHttpClient<IHttpDataClient, HttpDataClient>();
+builder.Services.AddSingleton<IMessageBusDataClient, MessageBusDataClient>();
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
 var app = builder.Build();

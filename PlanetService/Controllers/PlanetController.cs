@@ -1,14 +1,18 @@
 using Microsoft.AspNetCore.Mvc;
+using PlanetService.AsyncDataServices.Abstract;
 using PlanetService.Data.Abstract;
 using PlanetService.DTOs;
 using PlanetService.Mappers;
 using PlanetService.SyncDataServices.Http;
+using PlanetService.SyncDataServices.Http.Abstract;
 
 namespace PlanetService.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class PlanetController(IPlanetRepository planetRepository, IPlanetDataClient planetDataClient) : ControllerBase
+public class PlanetController(IPlanetRepository planetRepository,
+    IHttpDataClient httpDataClient,
+    IMessageBusDataClient messageBusDataClient) : ControllerBase
 {
     [HttpGet]
     public ActionResult<IEnumerable<PlanetReadDto>> GetAll() => Ok(planetRepository.GetAll().ToReadDtos());
@@ -37,13 +41,31 @@ public class PlanetController(IPlanetRepository planetRepository, IPlanetDataCli
 
         var planetReadDto = model.ToReadDto();
 
+        // Send sync message by http
         try
         {
-            await planetDataClient.SendPlanetDataAsync(planetReadDto);
+            await httpDataClient.SendPlanetDataAsync(planetReadDto);
         }
         catch (Exception e)
         {
-            Console.WriteLine($"==> Could not send data synchronously to SatelliteService: {e.Message}");
+            Console.WriteLine($"==> Could not send data synchronously: {e.Message}");
+        }
+
+        // Send async message by RabbitMQ
+        try
+        {
+            var planetPublishedDto = planetReadDto.ToPublishedDto();
+            planetPublishedDto.Event = "Planet_Published";
+            await messageBusDataClient.InitializeAsync();
+            await messageBusDataClient.PublishNewPlanetAsync(planetPublishedDto);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"==> Could not send data asynchronously: {e.Message}");
+        }
+        finally
+        {
+            await messageBusDataClient.DisposeAsync();
         }
 
         return CreatedAtAction(nameof(GetById), new { id = planetReadDto.Id }, planetReadDto);
