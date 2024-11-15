@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using SatelliteService.Data;
 using SatelliteService.Data.Abstract;
+using SatelliteService.EventProcessing;
+using SatelliteService.EventProcessing.Abstract;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +10,7 @@ builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options => { options.UseInMemoryDatabase("SatelliteDb"); });
 builder.Services.AddScoped<ISatelliteRepository, SatelliteRepository>();
+builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
 builder.WebHost.UseUrls("http://0.0.0.0:6000");
 
 var app = builder.Build();

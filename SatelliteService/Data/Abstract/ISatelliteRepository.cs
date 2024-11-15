@@ -12,6 +12,8 @@ public interface ISatelliteRepository
 
     bool IsPlanetExists(int planetId);
 
+    bool IsExternalPlanetExists(int externalPlanetId);
+
 
     IEnumerable<Satellite> GetSatellitesByPlanetId(int planetId);
 

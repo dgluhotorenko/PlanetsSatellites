@@ -20,6 +20,9 @@ public class SatelliteRepository(AppDbContext context) : ISatelliteRepository
 
     public bool IsPlanetExists(int planetId) => context.Planets.Any(p => p.Id == planetId);
 
+    public bool IsExternalPlanetExists(int externalPlanetId) => context.Planets.Any(p => p.ExternalId == externalPlanetId);
+
+
     public IEnumerable<Satellite> GetSatellitesByPlanetId(int planetId) => context.Satellites
             .Where(s => s.PlanetId == planetId)
             .OrderBy(s => s.Planet!.Name)
