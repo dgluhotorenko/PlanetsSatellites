@@ -15,6 +15,7 @@ public static class SatelliteMapperExtensions
         new()
         {
             Id = planet.Id,
+            ExternalId = planet.ExternalId,
             Name = planet.Name
         };
 

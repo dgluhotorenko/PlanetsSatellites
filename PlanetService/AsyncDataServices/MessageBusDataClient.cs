@@ -24,7 +24,6 @@ public class MessageBusDataClient(IConfiguration configuration) : IMessageBusDat
         {
             _connection = await factory.CreateConnectionAsync();
             _channel = await _connection.CreateChannelAsync();
-
             await _channel.ExchangeDeclareAsync(ExchangeName, ExchangeType.Fanout);
 
             _connection.ConnectionShutdownAsync += (_, _) =>

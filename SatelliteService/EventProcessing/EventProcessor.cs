@@ -15,6 +15,7 @@ public class EventProcessor(IServiceScopeFactory serviceScopeFactory) : IEventPr
         switch (eventType)
         {
             case EventType.PlanetPublished:
+                AddPlanet(message);
                 Console.WriteLine("==> Event type is PlanetPublished.");
                 break;
             case EventType.Undetermined:
@@ -33,32 +34,31 @@ public class EventProcessor(IServiceScopeFactory serviceScopeFactory) : IEventPr
 
         return eventType?.Event == "Planet_Published" ? EventType.PlanetPublished : EventType.Undetermined;
     }
-    
+
     private void AddPlanet(string message)
     {
-        using (var scope = serviceScopeFactory.CreateScope())
-        {
-            var satelliteRepository = scope.ServiceProvider.GetRequiredService<ISatelliteRepository>();
-            var planetPublishedDto = JsonSerializer.Deserialize<PlanetPublishedDto>(message);
+        using var scope = serviceScopeFactory.CreateScope();
+        var satelliteRepository = scope.ServiceProvider.GetRequiredService<ISatelliteRepository>();
+        var planetPublishedDto = JsonSerializer.Deserialize<PlanetPublishedDto>(message);
 
-            try
+        try
+        {
+            var planet = planetPublishedDto.ToModel();
+            if (!satelliteRepository.IsExternalPlanetExists(planet.ExternalId))
             {
-                var planet = planetPublishedDto.ToModel();
-                if (!satelliteRepository.IsExternalPlanetExists(planet.ExternalId))
-                {
-                    satelliteRepository.CreatePlanet(planet);
-                    satelliteRepository.SaveChanges();
-                }
-                else
-                {
-                    Console.WriteLine("==> Planet already exists in DB.");
-                }
+                satelliteRepository.CreatePlanet(planet);
+                satelliteRepository.SaveChanges();
+                Console.WriteLine("==> Planet added to DB.");
             }
-            catch (Exception e)
+            else
             {
-                Console.WriteLine("==> Error adding planet to DB: " + e.Message);
-                throw;
+                Console.WriteLine("==> Planet already exists in DB.");
             }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("==> Error adding planet to DB: " + e.Message);
+            throw;
         }
     }
 }

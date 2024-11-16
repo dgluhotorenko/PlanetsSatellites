@@ -25,7 +25,7 @@ public class SatelliteRepository(AppDbContext context) : ISatelliteRepository
 
     public IEnumerable<Satellite> GetSatellitesByPlanetId(int planetId) => context.Satellites
             .Where(s => s.PlanetId == planetId)
-            .OrderBy(s => s.Planet!.Name)
+            .OrderBy(s => s.Name)
             .ToList();
 
     public Satellite GetSatellite(int planetId, int satelliteId) => context.Satellites
