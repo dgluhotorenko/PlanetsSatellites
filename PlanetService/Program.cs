@@ -3,6 +3,7 @@ using PlanetService.AsyncDataServices;
 using PlanetService.AsyncDataServices.Abstract;
 using PlanetService.Data;
 using PlanetService.Data.Abstract;
+using PlanetService.SyncDataServices.Grpc;
 using PlanetService.SyncDataServices.Http;
 using PlanetService.SyncDataServices.Http.Abstract;
 
@@ -31,6 +32,7 @@ else
 builder.Services.AddScoped<IPlanetRepository, PlanetRepository>();
 builder.Services.AddHttpClient<IHttpDataClient, HttpDataClient>();
 builder.Services.AddSingleton<IMessageBusDataClient, MessageBusDataClient>();
+builder.Services.AddGrpc();
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
 var app = builder.Build();
@@ -45,7 +47,13 @@ if (app.Environment.IsDevelopment())
 Console.WriteLine($"==> SatelliteService endpoint - {app.Configuration["SatelliteService"]}");
 
 app.UseRouting();
-// app.UseAuthorization();
 app.MapControllers();
+app.MapGrpcService<GrpcPlanetService>();
+app.MapGet("/protos/planets.proto", async context =>
+{
+    context.Response.ContentType = "text/plain";
+    await context.Response.WriteAsync(await File.ReadAllTextAsync("Protos/planets.proto"));
+});
+
 DbSeeder.Seed(app, app.Environment.IsProduction());
 app.Run();

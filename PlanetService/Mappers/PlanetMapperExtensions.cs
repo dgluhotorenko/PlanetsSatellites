@@ -36,4 +36,14 @@ public static class PlanetMapperExtensions
             Id = planetReadDto.Id,
             Name = planetReadDto.Name
         };
+
+    // Planet -> GrpcPlanetModel
+    public static GrpcPlanetModel ToGrpcModel(this Planet planet) =>
+        new()
+        {
+            Id = planet.Id,
+            Name = planet.Name,
+            Mass = planet.Mass,
+            Radius = planet.Radius
+        };
 }
