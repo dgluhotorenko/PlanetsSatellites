@@ -1,3 +1,4 @@
+using PlanetService;
 using SatelliteService.DTOs;
 using SatelliteService.Models;
 
@@ -47,5 +48,17 @@ public static class SatelliteMapperExtensions
         {
             ExternalId = planetPublishedDto!.Id,
             Name = planetPublishedDto.Name
+        };
+
+    // IEnumerable<GrpcPlanetModel> -> IEnumerable<Planet>
+    public static IEnumerable<Planet> ToModels(this IEnumerable<GrpcPlanetModel> grpcPlanetModels) =>
+        grpcPlanetModels.Select(p => p.ToModel());
+
+    // GrpcPlanetModel -> Planet
+    private static Planet ToModel(this GrpcPlanetModel grpcPlanetModel) =>
+        new()
+        {
+            ExternalId = grpcPlanetModel.Id,
+            Name = grpcPlanetModel.Name
         };
 }
