@@ -7,9 +7,7 @@ public class SatelliteRepository(AppDbContext context) : ISatelliteRepository
 {
     public bool SaveChanges() => context.SaveChanges() >= 0;
 
-    public IEnumerable<Planet> GetAllPlanets() => context.Planets
-        .OrderBy(p => p.Name)
-        .ToList();
+    public IEnumerable<Planet> GetAllPlanets() => context.Planets.ToList();
 
     public void CreatePlanet(Planet planet)
     {

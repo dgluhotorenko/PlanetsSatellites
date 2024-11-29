@@ -4,6 +4,8 @@ using SatelliteService.Data;
 using SatelliteService.Data.Abstract;
 using SatelliteService.EventProcessing;
 using SatelliteService.EventProcessing.Abstract;
+using SatelliteService.SyncDataServices.Grpc;
+using SatelliteService.SyncDataServices.Grpc.Abstract;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options => { options.UseInMemoryDatabase("SatelliteDb"); });
 builder.Services.AddScoped<ISatelliteRepository, SatelliteRepository>();
 builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
+builder.Services.AddScoped<IPlanetDataClient, PlanetDataClient>();
 builder.Services.AddHostedService<MessageBusSubscriber>();
 builder.WebHost.UseUrls("http://0.0.0.0:6000");
 
@@ -25,6 +28,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
-// app.UseAuthorization();
 app.MapControllers();
+PrepDb.PrepPopulation(app);
 app.Run();

@@ -5,7 +5,7 @@ using SatelliteService.Mappers;
 
 namespace SatelliteService.Controllers;
 
-[Route("api/p/[controller]")]
+[Route("api/s/[controller]")]
 [ApiController]
 public class PlanetController(ISatelliteRepository repository) : ControllerBase
 {
