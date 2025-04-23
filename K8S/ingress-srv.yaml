@@ -24,3 +24,10 @@ spec:
                 name: satellite-clusterip-service
                 port:
                   number: 80
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-clusterip-service
+                port:
+                  number: 80

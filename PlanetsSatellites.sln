@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlanetService", "PlanetServ
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SatelliteService", "SatelliteService\SatelliteService.csproj", "{E1523DA2-324C-4427-9B42-B85FDEF4C953}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuthService", "AuthService\AuthService\AuthService.csproj", "{AE7D011D-3684-49FD-8D2D-4DBC31871E2C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuthService", "AuthService\AuthService.csproj", "{AE7D011D-3684-49FD-8D2D-4DBC31871E2C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
