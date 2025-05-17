@@ -15,6 +15,9 @@ spec:
       containers:
         - name: planetservice
           image: dgluhotorenko/planetservice:latest
+          envFrom:
+            - secretRef:
+                name: auth-jwt-secret 
 ---
 apiVersion: v1
 kind: Service

@@ -1,4 +1,6 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using PlanetService.AsyncDataServices;
 using PlanetService.AsyncDataServices.Abstract;
 using PlanetService.Data;
@@ -34,6 +36,21 @@ builder.Services.AddHttpClient<IHttpDataClient, HttpDataClient>();
 builder.Services.AddSingleton<IMessageBusDataClient, MessageBusDataClient>();
 builder.Services.AddGrpc();
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
+builder.Services.AddAuthentication("Bearer")
+    .AddJwtBearer("Bearer", options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? string.Empty))
+        };
+    });
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -54,6 +71,8 @@ app.MapGet("/protos/planets.proto", async context =>
     context.Response.ContentType = "text/plain";
     await context.Response.WriteAsync(await File.ReadAllTextAsync("Protos/planets.proto"));
 });
+app.UseAuthentication();
+app.UseAuthorization();
 
 DbSeeder.Seed(app, app.Environment.IsProduction());
 app.Run();

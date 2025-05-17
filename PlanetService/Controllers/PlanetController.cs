@@ -1,9 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PlanetService.AsyncDataServices.Abstract;
 using PlanetService.Data.Abstract;
 using PlanetService.DTOs;
 using PlanetService.Mappers;
-using PlanetService.SyncDataServices.Http;
 using PlanetService.SyncDataServices.Http.Abstract;
 
 namespace PlanetService.Controllers;
@@ -15,9 +15,11 @@ public class PlanetController(IPlanetRepository planetRepository,
     IMessageBusDataClient messageBusDataClient) : ControllerBase
 {
     [HttpGet]
+    [Authorize]
     public ActionResult<IEnumerable<PlanetReadDto>> GetAll() => Ok(planetRepository.GetAll().ToReadDtos());
 
     [HttpGet("{id:int}")]
+    [Authorize]
     public ActionResult<PlanetReadDto> GetById(int id)
     {
         ActionResult result = NotFound();
@@ -30,9 +32,9 @@ public class PlanetController(IPlanetRepository planetRepository,
 
         return result;
     }
-
-
+    
     [HttpPost]
+    [Authorize]
     public async Task<ActionResult<PlanetReadDto>> CreateAsync(PlanetCreateDto planetCreateDto)
     {
         var model = planetCreateDto.ToModel();
