@@ -4,14 +4,11 @@ using SatelliteService.Models;
 
 namespace SatelliteService.Mappers;
 
-// use AutoMapper when it will be really needed
 public static class SatelliteMapperExtensions
 {
-    // IEnumerable<Planet> -> IEnumerable<PlanetReadDto>
     public static IEnumerable<PlanetReadDto> ToReadDtos(this IEnumerable<Planet> planets) =>
         planets.Select(p => p.ToReadDto());
 
-    // Planet -> PlanetReadDto
     private static PlanetReadDto ToReadDto(this Planet planet) =>
         new()
         {
@@ -20,19 +17,16 @@ public static class SatelliteMapperExtensions
             Name = planet.Name
         };
 
-    // SatelliteCreateDto -> Satellite
-    public static Satellite ToModel(this SatelliteCreateDto satelliteCreateDto) =>
+    public static Satellite ToModel(this SatelliteCreateDto dto) =>
         new()
         {
-            Name = satelliteCreateDto.Name,
-            Type = satelliteCreateDto.Type
+            Name = dto.Name,
+            Type = dto.Type
         };
 
-    // IEnumerable<Satellite> -> IEnumerable<SatelliteReadDto>
     public static IEnumerable<SatelliteReadDto> ToReadDtos(this IEnumerable<Satellite> satellites) =>
         satellites.Select(s => s.ToReadDto());
 
-    // Satellite -> SatelliteReadDto
     public static SatelliteReadDto ToReadDto(this Satellite satellite) =>
         new()
         {
@@ -42,23 +36,20 @@ public static class SatelliteMapperExtensions
             PlanetId = satellite.PlanetId
         };
 
-    // PlanetPublishedDto -> Planet
-    public static Planet ToModel(this PlanetPublishedDto? planetPublishedDto) =>
+    public static Planet ToModel(this PlanetPublishedDto dto) =>
         new()
         {
-            ExternalId = planetPublishedDto!.Id,
-            Name = planetPublishedDto.Name
+            ExternalId = dto.Id,
+            Name = dto.Name
         };
 
-    // IEnumerable<GrpcPlanetModel> -> IEnumerable<Planet>
-    public static IEnumerable<Planet> ToModels(this IEnumerable<GrpcPlanetModel> grpcPlanetModels) =>
-        grpcPlanetModels.Select(p => p.ToModel());
+    public static IEnumerable<Planet> ToModels(this IEnumerable<GrpcPlanetModel> grpcModels) =>
+        grpcModels.Select(p => p.ToModel());
 
-    // GrpcPlanetModel -> Planet
-    private static Planet ToModel(this GrpcPlanetModel grpcPlanetModel) =>
+    private static Planet ToModel(this GrpcPlanetModel grpcModel) =>
         new()
         {
-            ExternalId = grpcPlanetModel.Id,
-            Name = grpcPlanetModel.Name
+            ExternalId = grpcModel.Id,
+            Name = grpcModel.Name
         };
 }

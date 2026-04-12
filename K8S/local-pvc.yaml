@@ -3,8 +3,9 @@ kind: PersistentVolumeClaim
 metadata:
   name: mssql-clime
 spec:
+  storageClassName: hostpath
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 200Mi

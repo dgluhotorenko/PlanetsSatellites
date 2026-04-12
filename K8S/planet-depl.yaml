@@ -15,9 +15,12 @@ spec:
       containers:
         - name: planetservice
           image: dgluhotorenko/planetservice:latest
+          env:
+            - name: ConnectionStrings__PlanetDbConnection
+              value: "Server=mssql-clusterip-service,1433;Initial Catalog=PlanetDb;User ID=sa;Password=pa55w0rd!;Encrypt=False;"
           envFrom:
             - secretRef:
-                name: auth-jwt-secret 
+                name: auth-jwt-secret
 ---
 apiVersion: v1
 kind: Service

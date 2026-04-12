@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SatelliteService.Data.Abstract;
 using SatelliteService.DTOs;
@@ -5,64 +6,46 @@ using SatelliteService.Mappers;
 
 namespace SatelliteService.Controllers;
 
-[Route("api/s/planets/{planetId}/[controller]")]
+[Route("api/s/planets/{planetId:int}/[controller]")]
 [ApiController]
+[Authorize]
 public class SatelliteController(ISatelliteRepository repository) : ControllerBase
 {
     [HttpGet]
     public ActionResult<IEnumerable<SatelliteReadDto>> GetSatellitesForPlanet(int planetId)
     {
-        Console.WriteLine($"==> GET Satellites from SatelliteService for planetId: {planetId}");
+        if (!repository.IsPlanetExists(planetId))
+            return NotFound();
 
-        return !repository.IsPlanetExists(planetId)
-            ? NotFound()
-            : Ok(repository.GetSatellitesByPlanetId(planetId).ToReadDtos());
+        return Ok(repository.GetSatellitesByPlanetId(planetId).ToReadDtos());
     }
 
-    [HttpGet("{satelliteId}", Name = "GetSatelliteForPlanet")]
+    [HttpGet("{satelliteId:int}", Name = "GetSatelliteForPlanet")]
     public ActionResult<SatelliteReadDto> GetSatelliteForPlanet(int planetId, int satelliteId)
     {
-        ActionResult result;
-
-        Console.WriteLine(
-            $"==> GET Satellite from SatelliteService for planetId: {planetId} and satelliteId: {satelliteId}");
-
         if (!repository.IsPlanetExists(planetId))
-        {
-            result = NotFound();
-        }
-        else
-        {
-            var satellite = repository.GetSatellite(planetId, satelliteId);
+            return NotFound();
 
-            result = satellite == null
-                ? NotFound()
-                : Ok(satellite.ToReadDto());
-        }
+        var satellite = repository.GetSatellite(planetId, satelliteId);
+        if (satellite is null)
+            return NotFound();
 
-        return result;
+        return Ok(satellite.ToReadDto());
     }
 
     [HttpPost]
-    public ActionResult<SatelliteReadDto> CreateSatelliteForPlanet(int planetId, SatelliteCreateDto satelliteCreateDto)
+    public ActionResult<SatelliteReadDto> CreateSatelliteForPlanet(int planetId, SatelliteCreateDto dto)
     {
-        ActionResult<SatelliteReadDto> result;
-
-        Console.WriteLine($"==> POST Satellite from SatelliteService for planetId: {planetId}");
-
         if (!repository.IsPlanetExists(planetId))
-        {
-            result = NotFound();
-        }
-        else
-        {
-            var satellite = satelliteCreateDto.ToModel();
-            repository.CreateSatellite(planetId, satellite);
-            repository.SaveChanges();
+            return NotFound();
 
-            result = CreatedAtRoute(nameof(GetSatelliteForPlanet), new { planetId, satelliteId = satellite.Id }, satellite.ToReadDto());
-        }
+        var satellite = dto.ToModel();
+        repository.CreateSatellite(planetId, satellite);
+        repository.SaveChanges();
 
-        return result;
+        return CreatedAtRoute(
+            nameof(GetSatelliteForPlanet),
+            new { planetId, satelliteId = satellite.Id },
+            satellite.ToReadDto());
     }
 }

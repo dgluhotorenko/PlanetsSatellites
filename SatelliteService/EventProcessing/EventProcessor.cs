@@ -6,59 +6,58 @@ using SatelliteService.Mappers;
 
 namespace SatelliteService.EventProcessing;
 
-public class EventProcessor(IServiceScopeFactory serviceScopeFactory) : IEventProcessor
+public class EventProcessor(
+    IServiceScopeFactory serviceScopeFactory,
+    ILogger<EventProcessor> logger) : IEventProcessor
 {
     public void ProcessEvent(string message)
     {
         var eventType = DetermineEventType(message);
-        
+
         switch (eventType)
         {
             case EventType.PlanetPublished:
                 AddPlanet(message);
-                Console.WriteLine("==> Event type is PlanetPublished.");
                 break;
             case EventType.Undetermined:
-                Console.WriteLine("==> Event type is Undetermined.");
+                logger.LogWarning("Received undetermined event type");
                 break;
-            default:
-                throw new ArgumentOutOfRangeException();
         }
     }
 
     private EventType DetermineEventType(string message)
     {
-        Console.WriteLine("==> Determining event type...");
+        var genericEvent = JsonSerializer.Deserialize<GenericEventDto>(message);
 
-        var eventType = JsonSerializer.Deserialize<GenericEventDto>(message);
-
-        return eventType?.Event == "Planet_Published" ? EventType.PlanetPublished : EventType.Undetermined;
+        return genericEvent?.Event == MessageBusConstants.PlanetPublishedEvent
+            ? EventType.PlanetPublished
+            : EventType.Undetermined;
     }
 
     private void AddPlanet(string message)
     {
         using var scope = serviceScopeFactory.CreateScope();
-        var satelliteRepository = scope.ServiceProvider.GetRequiredService<ISatelliteRepository>();
-        var planetPublishedDto = JsonSerializer.Deserialize<PlanetPublishedDto>(message);
+        var repository = scope.ServiceProvider.GetRequiredService<ISatelliteRepository>();
+        var dto = JsonSerializer.Deserialize<PlanetPublishedDto>(message);
 
-        try
+        if (dto is null)
         {
-            var planet = planetPublishedDto.ToModel();
-            if (!satelliteRepository.IsExternalPlanetExists(planet.ExternalId))
-            {
-                satelliteRepository.CreatePlanet(planet);
-                satelliteRepository.SaveChanges();
-                Console.WriteLine("==> Planet added to DB.");
-            }
-            else
-            {
-                Console.WriteLine("==> Planet already exists in DB.");
-            }
+            logger.LogWarning("Failed to deserialize PlanetPublishedDto from message");
+            return;
         }
-        catch (Exception e)
+
+        var planet = dto.ToModel();
+
+        if (repository.IsExternalPlanetExists(planet.ExternalId))
         {
-            Console.WriteLine("==> Error adding planet to DB: " + e.Message);
-            throw;
+            logger.LogInformation("Planet with ExternalId {ExternalId} already exists — skipping",
+                planet.ExternalId);
+            return;
         }
+
+        repository.CreatePlanet(planet);
+        repository.SaveChanges();
+        logger.LogInformation("Planet '{Name}' (ExternalId: {ExternalId}) added via message bus",
+            planet.Name, planet.ExternalId);
     }
 }

@@ -5,15 +5,17 @@ namespace PlanetService.Models;
 public record Planet
 {
     [Key]
-    [Required]
     public int Id { get; init; }
 
     [Required]
-    public string? Name { get; init; }
+    [MaxLength(100)]
+    public required string Name { get; init; }
 
-    // Earth masses
+    /// <summary>Mass in Earth masses.</summary>
+    [Range(0, double.MaxValue)]
     public double Mass { get; init; }
 
-    // Kilometers
+    /// <summary>Radius in kilometers.</summary>
+    [Range(0, double.MaxValue)]
     public double Radius { get; init; }
 }

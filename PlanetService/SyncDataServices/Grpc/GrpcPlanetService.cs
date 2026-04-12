@@ -4,7 +4,9 @@ using PlanetService.Mappers;
 
 namespace PlanetService.SyncDataServices.Grpc;
 
-public class GrpcPlanetService(IPlanetRepository repository) : GrpcPlanet.GrpcPlanetBase
+public class GrpcPlanetService(
+    IPlanetRepository repository,
+    ILogger<GrpcPlanetService> logger) : GrpcPlanet.GrpcPlanetBase
 {
     public override Task<PlanetResponse> GetAll(GetAllRequest request, ServerCallContext context)
     {
@@ -16,6 +18,7 @@ public class GrpcPlanetService(IPlanetRepository repository) : GrpcPlanet.GrpcPl
             response.Planets.Add(planet.ToGrpcModel());
         }
 
+        logger.LogInformation("Served {Count} planets via gRPC", response.Planets.Count);
         return Task.FromResult(response);
     }
 }

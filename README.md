@@ -1,141 +1,322 @@
-# PlanetsSatellites Microservices Project
+# PlanetsSatellites
 
-This repository demonstrates a microservices-based architecture built with .NET, Docker, Kubernetes, RabbitMQ, and gRPC. It is designed as a practical showcase of modern backend technologies and container orchestration. The project can be run locally, in Docer or in K8s.
+A microservices demo built with **.NET 9**, showcasing inter-service communication patterns (HTTP, gRPC, RabbitMQ), JWT authentication, Docker, and Kubernetes orchestration.
 
-**Project Overview**
-The system consists of two microservices:
+## Architecture
 
-1. PlanetService: Manages planetary data.
-2. SatelliteService: Manages satellite data linked to planets.
+```
+                          ┌──────────────────────────────────────────────────┐
+                          │          Internal Microservices Domain           │
+                          │                                                  │
+  ┌────────┐   REST API   │  ┌────────────────┐      ┌──────────────┐        │
+  │  API   │─────────────►│  │ PlanetService  │──────│  SQL Server  │        │
+  │Gateway │              │  │  (port 5000)   │      │  (port 1433) │        │
+  │(Ingress│   REST API   │  └──────┬───┬─────┘      └──────────────┘        │
+  │ Nginx) │──────┐       │     gRPC│   │Publish                             │
+  │        │      │       │         │   ▼                                    │
+  │        │  REST│API    │         │  ┌──────────────────┐                  │
+  │        │──┐   │       │         │  │ RabbitMQ Message │                  │
+  └────────┘  │   │       │         │  │   Bus (5672)     │                  │
+              │   │       │         │  └────────┬─────────┘                  │
+              │   │       │         │       Subscribe                        │
+              ▼   ▼       │         ▼           │                            │
+         ┌──────────────┐ │  ┌─────────────────┐│  ┌──────────┐              │
+         │ AuthService  │ │  │SatelliteService ◄┘  │ InMemory │              │
+         │ (port 7000)  │ │  │  (port 6000)    │───│    DB    │              │
+         └──────────────┘ │  └─────────────────┘   └──────────┘              │
+              │           │                                                  │
+              ▼           └──────────────────────────────────────────────────┘
+         ┌──────────┐
+         │SQL Server│
+         └──────────┘
+```
 
-These services communicate using:
+### Services
 
-- http for inter-service communication.
-- gRPC for efficient inter-service communication.
-- RabbitMQ for asynchronous message passing.
+| Service | Port | Description |
+|---|---|---|
+| **PlanetService** | 5000 (HTTP), 50051 (gRPC) | CRUD for planets. Publishes events via RabbitMQ and sends sync HTTP notifications. Exposes gRPC endpoint for SatelliteService. |
+| **SatelliteService** | 6000 | Manages satellites linked to planets. Subscribes to RabbitMQ events. Fetches initial planet data via gRPC on startup. |
+| **AuthService** | 7000 | User registration and login. Issues JWT tokens used by other services for authorization. |
 
-**Features**
-- Microservices Architecture: Decoupled services for scalability and modularity.
-- gRPC Communication: High-performance communication between services.
-- Asynchronous Messaging: RabbitMQ ensures reliable event handling.
-- Kubernetes Orchestration: Deploy services into a local K8s cluster.
-- Containerization: Docker images available for both services.
+### Communication Patterns
 
-  **Details**:
-  - PlanetService works with DB in-memory in DEV environment and with MS SQL Server in PROD env. If there are no planets in the DB we do the [seeding]([url](https://github.com/dgluhotorenko/PlanetsSatellites/blob/main/PlanetService/Data/DbSeeder.cs)) in start of the service.
-  - SatelliteService works with DB in-memory DB in all cases.
-  - [PlanetController]([url](https://github.com/dgluhotorenko/PlanetsSatellites/blob/main/PlanetService/Controllers/PlanetController.cs)) from PlanetService can: GetAll, GetById и Create. When we create a new planet we notify SatelliteService synchoniuslly by http, see [HttpDataClient]([url](https://github.com/dgluhotorenko/PlanetsSatellites/blob/main/PlanetService/SyncDataServices/Http/HttpDataClient.cs)).
-  - Also PlanetService send the info about new planet to SatelliteService [asynchoniuslly by message bus, using RabbitMQ]([url](https://github.com/dgluhotorenko/PlanetsSatellites/blob/main/PlanetService/AsyncDataServices/MessageBusDataClient.cs)) and the planet creates on SattelliteService side too.
-  - SatelliteService has endpoints for: test inbound calls from PlanetService; getting all planets (objects of the SatelliteService that stored in memory DB); getting all satellites for certain planet; getting certain satellite for certain planet and creating satellite for certain planet.
-  - SatelliteService do the prepopulation by asking PlanetService about existing planets [synchoniuslly by gRPC]([url](https://github.com/dgluhotorenko/PlanetsSatellites/blob/main/SatelliteService/Data/PrepDb.cs)).
-  - The latest image of planetservice is [here]([url](https://hub.docker.com/r/dgluhotorenko/planetservice)).
-  - The latest image of satelliteservice is [here]([url](https://hub.docker.com/r/dgluhotorenko/satelliteservice)).
+- **Synchronous HTTP** — PlanetService notifies SatelliteService when a new planet is created
+- **Synchronous gRPC** — SatelliteService fetches all planets from PlanetService on startup
+- **Asynchronous RabbitMQ** — PlanetService publishes `Planet_Published` events; SatelliteService subscribes and creates local copies
 
-**Prerequisites**
+## Tech Stack
 
-To run the project, ensure you have installed [Docker]([url](https://docs.docker.com/desktop/)).
+- .NET 9 (LTS), ASP.NET Core Web API
+- Entity Framework Core (SQL Server + InMemory)
+- gRPC (Protobuf)
+- RabbitMQ (async messaging)
+- ASP.NET Core Identity + JWT Bearer authentication
+- Docker & Kubernetes
+- xUnit + Moq (testing)
 
+## Prerequisites
 
-**Getting Started in K8s:**
+- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) (or .NET 10 SDK — it can build .NET 9 projects)
+- [Docker Desktop](https://docs.docker.com/desktop/) (for Docker Compose or Kubernetes)
 
-Clone the Repository
->git clone https://github.com/dgluhotorenko/PlanetsSatellites.git
+## Quick Start (Docker Compose)
 
-Add next row to your hosts file:
->127.0.0.1 planetsatellitessevice.com
+The easiest way to run everything locally:
 
-Go to ~\PlanetsSatellites\K8S
+```bash
+# 1. Clone the repository
+git clone https://github.com/dgluhotorenko/PlanetsSatellites.git
+cd PlanetsSatellites
 
-Create a PersistentVolumeClaim (PVC) in K8s to store our DB.
->kubectl apply -f local-pvc.yaml
+# 2. Start all services (builds images, starts MSSQL, RabbitMQ, and all 3 services)
+docker compose up --build
 
-Create a K8s Secret to store the MS SQL SA password:
->kubectl create secret generic mssql --from-literal=SA_PASSWORD="pa55w0rd!"
+# 3. Wait until all services are healthy (about 30-60 seconds for MSSQL to initialize)
+```
 
-Deploy the MS SQL Server instance and its services:
->kubectl apply -f mssql-planet-depl.yaml
+That's it! All services are running:
+- **AuthService**: http://localhost:7000
+- **PlanetService**: http://localhost:5000
+- **SatelliteService**: http://localhost:6000
+- **RabbitMQ Management UI**: http://localhost:15672 (guest/guest)
 
-Set up the NGINX Ingress Controller in the K8s cluster to manage external traffic routing to services within the cluster:
->kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.0-beta.0/deploy/static/provider/cloud/deploy.yaml
+### Try the API
 
-Configure an Ingress to route external requests to the microservices:
->kubectl apply -f ingress-srv.yaml
+**Step 1: Register a user**
+```bash
+curl -X POST http://localhost:7000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "P@ssw0rd123"}'
+```
 
-Deploy the planet microservice and its internal service:
->kubectl apply -f planet-depl.yaml
+**Step 2: Login and get a JWT token**
+```bash
+curl -X POST http://localhost:7000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "P@ssw0rd123"}'
+```
+Copy the `token` value from the response.
 
-Deploy the satellite microservice and its internal service:
->kubectl apply -f satellite-depl.yaml
+**Step 3: Get all planets (requires token)**
+```bash
+curl http://localhost:5000/api/planet \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```
+Returns the 5 seeded planets (Mercury, Venus, Earth, Mars, Jupiter).
 
-Deploy RabbitMQ and its services:
->kubectl apply -f rabbitmq-depl.yaml
+**Step 4: Create a new planet**
+```bash
+curl -X POST http://localhost:5000/api/planet \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Saturn", "mass": 95.16, "radius": 58232.0}'
+```
+This triggers:
+1. Synchronous HTTP notification to SatelliteService
+2. Asynchronous RabbitMQ event (`Planet_Published`)
+3. SatelliteService receives the event and creates a local copy
 
+**Step 5: Verify planet sync on SatelliteService**
+```bash
+curl http://localhost:6000/api/s/planet \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```
+You should see all planets including the newly created Saturn.
 
-That's it.
-Now you can get all planets by calling planet service in K8s claster by sending GET request to http://planetsatellitessevice.com/api/planet in Postman (or something like this).
-You should see the json with result:
+**Step 6: Create a satellite for a planet**
+```bash
+curl -X POST http://localhost:6000/api/s/planets/1/satellite \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Titan", "type": "Natural"}'
+```
 
-![image](https://github.com/user-attachments/assets/c72e7366-423a-47d9-94ac-a52457e6417e)
+**Step 7: Get satellites for a planet**
+```bash
+curl http://localhost:6000/api/s/planets/1/satellite \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```
 
-To get one planet by id call please
->http://planetsatellitessevice.com/api/planet/ID_HERE
+### Stop everything
 
-To create a new planet send please POST request with body like this 
+```bash
+docker compose down        # stop and remove containers
+docker compose down -v     # also remove the MSSQL data volume
+```
 
->{
->    "name": "Test planet",
->    "mass": 1,
->    "radius": 1000
->} 
+## Running Tests
 
-to endpoint
->http://planetsatellitessevice.com/api/planet
+```bash
+dotnet test
+```
 
-You should see something like this as a result:
+Runs 38 tests across 3 test projects:
+- `PlanetService.Tests` — repository, mapper, and controller unit tests
+- `SatelliteService.Tests` — repository, mapper, and event processor tests
+- `AuthService.Tests` — auth controller tests (register, login, token generation)
 
-![image](https://github.com/user-attachments/assets/c6da3c12-cca2-4dac-9b28-9a788f6d6d1d)
+## Running Locally (without Docker)
 
-After successful creation a new planet, the planet service send sync message by http to satellite service (that uses only for showing the message in console) and async message via RabbitMQ message bus which create a planet object on SatelliteService side. To check it, you can send GET request to 
->http://planetsatellitessevice.com/api/s/planet
+1. Start a SQL Server instance on `localhost:1433` (for AuthService)
+2. Start RabbitMQ on `localhost:5672`
+3. Run each service:
 
-it should return the info about newly created planet. 
-Also in this response you can see all other planets because they were created when we run satellite service by requesting them from the planet service via gRPC (see [PrepDb]([url](https://github.com/dgluhotorenko/PlanetsSatellites/blob/main/SatelliteService/Data/PrepDb.cs))).
+```bash
+dotnet run --project AuthService
+dotnet run --project PlanetService
+dotnet run --project SatelliteService
+```
 
-Now we can create a satellite for the planet (on SatelliteService side). We can do it by calling
->http://planetsatellitessevice.com/api/s/planets/ID_OF_PLANET/satellite
+PlanetService uses an in-memory database in development mode, so no SQL Server is needed for it.
+SatelliteService always uses an in-memory database.
+AuthService requires SQL Server for ASP.NET Core Identity.
 
-As a result you should get something like this:
+## Kubernetes Deployment
 
-![image](https://github.com/user-attachments/assets/faa764cc-e965-4a09-9cd4-681208c09bd8)
+For production-like deployment using Kubernetes:
 
-You can get all sattelites of your planet has by call
->http://planetsatellitessevice.com/api/s/planets/ID_OF_PLANET/satellite
+```bash
+cd K8S
 
-Or you can get the certain sattelite of the planet by call
->http://planetsatellitessevice.com/api/s/planets/ID_OF_PLANET/satellite/ID_OF_SATELLITE
+# Create persistent storage for SQL Server
+kubectl apply -f local-pvc.yaml
 
+# Create secrets
+kubectl create secret generic mssql --from-literal=SA_PASSWORD="pa55w0rd!"
+kubectl create secret generic auth-jwt-secret \
+  --from-literal=Jwt__Key="YourProductionSecretKey_MinLength32Chars!" \
+  --from-literal=Jwt__Issuer="PlanetsSatellitesAuth" \
+  --from-literal=Jwt__Audience="PlanetsSatellitesUsers"
 
-**When you finish you can clean all:**
+# Deploy infrastructure
+kubectl apply -f mssql-planet-depl.yaml
+kubectl apply -f rabbitmq-depl.yaml
 
+# Deploy NGINX Ingress Controller
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.0-beta.0/deploy/static/provider/cloud/deploy.yaml
 
->kubectl delete deployment satellite-depl
+# Deploy services
+kubectl apply -f auth-depl.yaml
+kubectl apply -f planet-depl.yaml
+kubectl apply -f satellite-depl.yaml
+kubectl apply -f ingress-srv.yaml
+```
 
->kubectl delete deployment planet-depl
+Add to your hosts file:
+```
+127.0.0.1 planetssatellites.com
+```
 
->kubectl delete deployment rabbitmq-depl
+### Accessing the API
 
->kubectl delete deployment mssql-planet-depl
+The Ingress controller exposes a LoadBalancer on port 80. If port 80 is free on your machine:
 
->kubectl delete service planet-clusterip-service
+```
+http://planetssatellites.com/api/planet
+```
 
->kubectl delete service satellite-clusterip-service
+If port 80 is already in use (e.g., by IIS), use `kubectl port-forward` instead:
 
->kubectl delete service mssql-clusterip-service
+```bash
+kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8080:80
+```
 
->kubectl delete service mssql-loadbalancer-service
+Then access the API at `http://planetssatellites.com:8080/api/planet`, etc.
 
->kubectl delete ingress ingress-service
+### Testing the K8S deployment
 
->kubectl delete service rabbitmq-clusterip-service
+```bash
+# 1. Register
+curl -X POST http://planetssatellites.com:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "P@ssw0rd123"}'
 
->kubectl delete service rabbitmq-loadbalancer-service
+# 2. Login (copy the token from the response)
+curl -X POST http://planetssatellites.com:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "P@ssw0rd123"}'
+
+# 3. Get planets (replace YOUR_TOKEN_HERE)
+curl http://planetssatellites.com:8080/api/planet \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```
+
+> Replace `:8080` with `:80` (or omit the port) if you're not using port-forward.
+
+### Cleanup K8S
+
+```bash
+kubectl delete -f K8S/
+kubectl delete secret mssql auth-jwt-secret
+```
+
+## API Reference
+
+### AuthService
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Register a new user |
+| POST | `/api/auth/login` | Login and receive a JWT token |
+
+### PlanetService (requires JWT token)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/planet` | Get all planets |
+| GET | `/api/planet/{id}` | Get a planet by ID |
+| POST | `/api/planet` | Create a new planet |
+
+### SatelliteService (requires JWT token)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/s/planet` | Get all planets (local copies) |
+| GET | `/api/s/planets/{planetId}/satellite` | Get all satellites for a planet |
+| GET | `/api/s/planets/{planetId}/satellite/{satelliteId}` | Get a specific satellite |
+| POST | `/api/s/planets/{planetId}/satellite` | Create a satellite for a planet |
+
+All services expose a `/health` endpoint for health checks.
+
+## Project Structure
+
+```
+PlanetsSatellites/
+├── PlanetService/              # Planet management microservice
+│   ├── Controllers/            # REST API controllers
+│   ├── Data/                   # EF Core context, repository, seeder
+│   ├── DTOs/                   # Data transfer objects
+│   ├── Mappers/                # Manual DTO <-> Model mappers
+│   ├── Models/                 # Domain models
+│   ├── AsyncDataServices/      # RabbitMQ publisher
+│   ├── SyncDataServices/       # HTTP client + gRPC server
+│   └── Protos/                 # Protobuf definitions
+├── SatelliteService/           # Satellite management microservice
+│   ├── Controllers/            # REST API controllers
+│   ├── Data/                   # EF Core context, repository, seed
+│   ├── DTOs/                   # Data transfer objects
+│   ├── Mappers/                # Manual DTO <-> Model mappers
+│   ├── Models/                 # Domain models
+│   ├── AsyncDataServices/      # RabbitMQ subscriber
+│   ├── SyncDataServices/       # gRPC client
+│   ├── EventProcessing/        # Message bus event handler
+│   └── Protos/                 # Protobuf definitions
+├── AuthService/                # Authentication microservice
+│   ├── Controllers/            # Auth endpoints (register, login)
+│   ├── Data/                   # Identity DbContext
+│   └── Models/                 # User and auth models
+├── PlanetService.Tests/        # Unit tests for PlanetService
+├── SatelliteService.Tests/     # Unit tests for SatelliteService
+├── AuthService.Tests/          # Unit tests for AuthService
+├── K8S/                        # Kubernetes deployment manifests
+├── docker-compose.yml          # Docker Compose for local development
+└── PlanetsSatellites.sln       # Solution file
+```
+
+## Docker Images
+
+Pre-built images are available on Docker Hub:
+- [dgluhotorenko/planetservice](https://hub.docker.com/r/dgluhotorenko/planetservice)
+- [dgluhotorenko/satelliteservice](https://hub.docker.com/r/dgluhotorenko/satelliteservice)
+- [dgluhotorenko/authservice](https://hub.docker.com/r/dgluhotorenko/authservice)

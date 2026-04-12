@@ -2,9 +2,9 @@ namespace SatelliteService.DTOs;
 
 public record PlanetReadDto
 {
-    public int Id { get; init; }
+    public required int Id { get; init; }
 
-    public int ExternalId { get; init; }
+    public required int ExternalId { get; init; }
 
-    public string? Name { get; init; }
+    public required string Name { get; init; }
 }

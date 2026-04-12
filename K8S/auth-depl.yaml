@@ -16,6 +16,8 @@ spec:
         - name: authservice
           image: dgluhotorenko/authservice:latest
           env:
+            - name: ConnectionStrings__DefaultConnection
+              value: "Server=mssql-clusterip-service,1433;Initial Catalog=AuthDb;User ID=sa;Password=pa55w0rd!;Encrypt=False;"
             - name: Jwt__Key
               valueFrom:
                 secretKeyRef:

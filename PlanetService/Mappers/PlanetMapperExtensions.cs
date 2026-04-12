@@ -3,14 +3,11 @@ using PlanetService.Models;
 
 namespace PlanetService.Mappers;
 
-// use AutoMapper when it will be really needed
 public static class PlanetMapperExtensions
 {
-    // IEnumerable<Planet> -> IEnumerable<PlanetReadDto>
     public static IEnumerable<PlanetReadDto> ToReadDtos(this IEnumerable<Planet> planets) =>
         planets.Select(planet => planet.ToReadDto());
 
-    // Planet -> PlanetReadDto
     public static PlanetReadDto ToReadDto(this Planet planet) =>
         new()
         {
@@ -20,24 +17,22 @@ public static class PlanetMapperExtensions
             Radius = planet.Radius
         };
 
-    // PlanetCreateDto -> Planet
-    public static Planet ToModel(this PlanetCreateDto planetCreateDto) =>
+    public static Planet ToModel(this PlanetCreateDto dto) =>
         new()
         {
-            Name = planetCreateDto.Name,
-            Mass = planetCreateDto.Mass,
-            Radius = planetCreateDto.Radius
+            Name = dto.Name,
+            Mass = dto.Mass,
+            Radius = dto.Radius
         };
 
-    // PlanetReadDto -> PlanetPublishedDto
-    public static PlanetPublishedDto ToPublishedDto(this PlanetReadDto planetReadDto) =>
+    public static PlanetPublishedDto ToPublishedDto(this PlanetReadDto dto) =>
         new()
         {
-            Id = planetReadDto.Id,
-            Name = planetReadDto.Name
+            Id = dto.Id,
+            Name = dto.Name,
+            Event = MessageBusConstants.PlanetPublishedEvent
         };
 
-    // Planet -> GrpcPlanetModel
     public static GrpcPlanetModel ToGrpcModel(this Planet planet) =>
         new()
         {

@@ -1,8 +1,13 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace AuthService.Models;
 
 public class LoginModel
 {
-    public string Email { get; set; }
+    [Required]
+    [EmailAddress]
+    public required string Email { get; init; }
 
-    public string Password { get; set; }
+    [Required]
+    public required string Password { get; init; }
 }

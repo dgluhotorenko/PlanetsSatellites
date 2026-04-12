@@ -6,27 +6,22 @@ using SatelliteService.SyncDataServices.Grpc.Abstract;
 
 namespace SatelliteService.SyncDataServices.Grpc;
 
-public class PlanetDataClient(IConfiguration configuration) : IPlanetDataClient
+public class PlanetDataClient(
+    IConfiguration configuration,
+    ILogger<PlanetDataClient> logger) : IPlanetDataClient
 {
     public IEnumerable<Planet> GetAll()
     {
-        var address = configuration["GrpcPlanet"];
+        var address = configuration["GrpcPlanet"]
+            ?? throw new InvalidOperationException("GrpcPlanet endpoint is not configured");
 
-        Console.WriteLine($"==> Calling Planet gRPC Service {address}");
+        logger.LogInformation("Calling PlanetService gRPC endpoint at {Address}", address);
 
-        var channel = GrpcChannel.ForAddress(address!);
+        using var channel = GrpcChannel.ForAddress(address);
         var client = new GrpcPlanet.GrpcPlanetClient(channel);
-        var request = new GetAllRequest();
+        var reply = client.GetAll(new GetAllRequest());
 
-        try
-        {
-            var reply = client.GetAll(request);
-            return reply.Planets.ToModels();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"==> Could not call Planet gRPC Service {ex.Message}");
-            throw;
-        }
+        logger.LogInformation("Received {Count} planets from gRPC", reply.Planets.Count);
+        return reply.Planets.ToModels();
     }
 }

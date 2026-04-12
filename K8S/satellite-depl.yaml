@@ -15,6 +15,9 @@ spec:
       containers:
         - name: satelliteservice
           image: dgluhotorenko/satelliteservice:latest
+          envFrom:
+            - secretRef:
+                name: auth-jwt-secret
 ---
 apiVersion: v1
 kind: Service

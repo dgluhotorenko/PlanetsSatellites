@@ -5,8 +5,10 @@ namespace SatelliteService.DTOs;
 public record SatelliteCreateDto
 {
     [Required]
-    public string? Name { get; init; }
+    [MaxLength(100)]
+    public required string Name { get; init; }
 
     [Required]
-    public string? Type { get; init; }
+    [MaxLength(50)]
+    public required string Type { get; init; }
 }

@@ -10,31 +10,31 @@ namespace PlanetService.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class PlanetController(IPlanetRepository planetRepository,
+[Authorize]
+public class PlanetController(
+    IPlanetRepository planetRepository,
     IHttpDataClient httpDataClient,
-    IMessageBusDataClient messageBusDataClient) : ControllerBase
+    IMessageBusDataClient messageBusDataClient,
+    ILogger<PlanetController> logger) : ControllerBase
 {
     [HttpGet]
-    [Authorize]
-    public ActionResult<IEnumerable<PlanetReadDto>> GetAll() => Ok(planetRepository.GetAll().ToReadDtos());
+    public ActionResult<IEnumerable<PlanetReadDto>> GetAll()
+    {
+        var planets = planetRepository.GetAll().ToReadDtos();
+        return Ok(planets);
+    }
 
     [HttpGet("{id:int}")]
-    [Authorize]
     public ActionResult<PlanetReadDto> GetById(int id)
     {
-        ActionResult result = NotFound();
-
         var planet = planetRepository.GetById(id);
-        if (planet != null)
-        {
-            result = Ok(planet.ToReadDto());
-        }
+        if (planet is null)
+            return NotFound();
 
-        return result;
+        return Ok(planet.ToReadDto());
     }
-    
+
     [HttpPost]
-    [Authorize]
     public async Task<ActionResult<PlanetReadDto>> CreateAsync(PlanetCreateDto planetCreateDto)
     {
         var model = planetCreateDto.ToModel();
@@ -43,31 +43,25 @@ public class PlanetController(IPlanetRepository planetRepository,
 
         var planetReadDto = model.ToReadDto();
 
-        // Send sync message by http
+        // Notify SatelliteService synchronously via HTTP
         try
         {
             await httpDataClient.SendPlanetDataAsync(planetReadDto);
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            Console.WriteLine($"==> Could not send data synchronously: {e.Message}");
+            logger.LogWarning(ex, "Failed to send synchronous notification to SatelliteService");
         }
 
-        // Send async message by RabbitMQ
+        // Publish event asynchronously via RabbitMQ
         try
         {
-            var planetPublishedDto = planetReadDto.ToPublishedDto();
-            planetPublishedDto.Event = "Planet_Published";
-            await messageBusDataClient.InitializeAsync();
-            await messageBusDataClient.PublishNewPlanetAsync(planetPublishedDto);
+            var publishedDto = planetReadDto.ToPublishedDto();
+            await messageBusDataClient.PublishNewPlanetAsync(publishedDto);
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            Console.WriteLine($"==> Could not send data asynchronously: {e.Message}");
-        }
-        finally
-        {
-            await messageBusDataClient.DisposeAsync();
+            logger.LogWarning(ex, "Failed to publish planet event to message bus");
         }
 
         return CreatedAtAction(nameof(GetById), new { id = planetReadDto.Id }, planetReadDto);

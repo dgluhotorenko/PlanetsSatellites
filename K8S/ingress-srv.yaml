@@ -7,7 +7,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: planetsatellitessevice.com
+    - host: planetssatellites.com
       http:
         paths:
           - path: /api/planet
