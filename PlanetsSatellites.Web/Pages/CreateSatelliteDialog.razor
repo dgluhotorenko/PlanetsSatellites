@@ -1,0 +1,57 @@
+@inject SatelliteApiClient SatelliteApi
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="@_model" OnValidSubmit="SubmitAsync" id="create-satellite-form">
+            <DataAnnotationsValidator />
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_model.Name" Label="Name" For="@(() => _model.Name)"
+                              Variant="Variant.Outlined" AutoFocus="true" Immediate="true" />
+                <MudSelect T="string" @bind-Value="_model.Type" Label="Type" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("Natural")">Natural (e.g. Moon, Titan)</MudSelectItem>
+                    <MudSelectItem Value="@("Artificial")">Artificial (e.g. ISS, Hubble)</MudSelectItem>
+                </MudSelect>
+                @if (_error is not null)
+                {
+                    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                }
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                   form="create-satellite-form"
+                   Disabled="@(_busy || string.IsNullOrWhiteSpace(_model.Name))">
+            @if (_busy)
+            {
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+            }
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = null!;
+    [Parameter] public int SatellitePlanetLocalId { get; set; }
+
+    private readonly CreateSatelliteRequest _model = new();
+    private bool _busy;
+    private string? _error;
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _error = null;
+        var result = await SatelliteApi.CreateAsync(SatellitePlanetLocalId, _model);
+        _busy = false;
+
+        if (result.Success && result.Value is not null)
+            Dialog.Close(DialogResult.Ok(result.Value));
+        else
+            _error = result.Error;
+    }
+
+    private void Cancel() => Dialog.Cancel();
+}

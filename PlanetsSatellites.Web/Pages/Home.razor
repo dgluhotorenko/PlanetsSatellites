@@ -1,0 +1,54 @@
+@page "/"
+
+<PageTitle>Planets &amp; Satellites</PageTitle>
+
+<MudStack Spacing="4" AlignItems="AlignItems.Center" Class="mt-8">
+    <MudIcon Icon="@Icons.Material.Filled.Public" Size="Size.Large" Style="font-size: 6rem;" Color="Color.Primary" />
+    <MudText Typo="Typo.h3" Align="Align.Center">Planets &amp; Satellites</MudText>
+    <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="mud-text-secondary" Style="max-width: 600px;">
+        .NET 9 microservices demo: HTTP · gRPC · RabbitMQ · JWT · Kubernetes.
+        Log in to explore planets and their satellites.
+    </MudText>
+
+    <AuthorizeView>
+        <Authorized>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                       Href="/planets" StartIcon="@Icons.Material.Filled.Rocket">
+                View planets
+            </MudButton>
+        </Authorized>
+        <NotAuthorized>
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                           Href="/login" StartIcon="@Icons.Material.Filled.Login">
+                    Login
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large"
+                           Href="/register" StartIcon="@Icons.Material.Filled.PersonAdd">
+                    Register
+                </MudButton>
+            </MudStack>
+        </NotAuthorized>
+    </AuthorizeView>
+</MudStack>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-10">
+    <TechInfoPanel Title="Architecture at a glance">
+        <Body>
+            <p><b>Three .NET 9 microservices</b>, each in its own container:</p>
+            <ul>
+                <li><b>AuthService</b> (:7000) — ASP.NET Core Identity + JWT issuer. <b>SQL Server</b> persistence (<code>AuthDb</code>).</li>
+                <li><b>PlanetService</b> (:5000 REST, :50051 gRPC) — planet CRUD. <b>EF InMemory</b> in dev, SQL Server in prod. Publishes events to RabbitMQ, exposes gRPC server.</li>
+                <li><b>SatelliteService</b> (:6001 → container :6000 — Chrome blocks :6000) — satellite CRUD + replicated planets. <b>EF InMemory</b>. Consumes RabbitMQ, calls PlanetService gRPC on startup.</li>
+            </ul>
+
+            <p><b>Three communication patterns</b>, deliberately:</p>
+            <ul>
+                <li><b>Synchronous REST</b> — Blazor → all three services; plus PlanetService → SatelliteService fire-and-forget notification.</li>
+                <li><b>Synchronous gRPC</b> — SatelliteService bootstraps its planet cache from PlanetService on startup (<code>PrepDb.PrepPopulation</code>).</li>
+                <li><b>Asynchronous RabbitMQ</b> — PlanetService publishes <code>Planet_Published</code> events to a fanout exchange <code>"trigger"</code>; SatelliteService subscribes and replicates.</li>
+            </ul>
+
+        </Body>
+    </TechInfoPanel>
+</MudContainer>

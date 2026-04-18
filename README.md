@@ -1,6 +1,6 @@
 # PlanetsSatellites
 
-A microservices demo built with **.NET 9**, showcasing inter-service communication patterns (HTTP, gRPC, RabbitMQ), JWT authentication, Docker, and Kubernetes orchestration.
+A microservices demo built with **.NET 9**, showcasing inter-service communication patterns (HTTP, gRPC, RabbitMQ), JWT authentication, Docker, and Kubernetes orchestration. Includes a **Blazor WebAssembly** UI (MudBlazor) that visualises the replication flow end-to-end.
 
 ## Architecture
 
@@ -33,11 +33,12 @@ A microservices demo built with **.NET 9**, showcasing inter-service communicati
 
 ### Services
 
-| Service | Port | Description |
+| Service | Port (host) | Description |
 |---|---|---|
 | **PlanetService** | 5000 (HTTP), 50051 (gRPC) | CRUD for planets. Publishes events via RabbitMQ and sends sync HTTP notifications. Exposes gRPC endpoint for SatelliteService. |
-| **SatelliteService** | 6000 | Manages satellites linked to planets. Subscribes to RabbitMQ events. Fetches initial planet data via gRPC on startup. |
+| **SatelliteService** | 6001 → 6000 in container | Manages satellites linked to planets. Subscribes to RabbitMQ events. Fetches initial planet data via gRPC on startup. Host port is `6001` because Chrome blocks calls to `:6000` as `ERR_UNSAFE_PORT` (reserved for X11). |
 | **AuthService** | 7000 | User registration and login. Issues JWT tokens used by other services for authorization. |
+| **PlanetsSatellites.Web** | 5257 (dev server) | Blazor WebAssembly UI (MudBlazor). Login / register, planet CRUD, satellite CRUD, and a live "Replication" column that times RabbitMQ propagation from PlanetService to SatelliteService. |
 
 ### Communication Patterns
 
@@ -78,8 +79,10 @@ docker compose up --build
 That's it! All services are running:
 - **AuthService**: http://localhost:7000
 - **PlanetService**: http://localhost:5000
-- **SatelliteService**: http://localhost:6000
+- **SatelliteService**: http://localhost:6001 *(container still listens on 6000; host maps it to 6001 because Chrome blocks `:6000`)*
 - **RabbitMQ Management UI**: http://localhost:15672 (guest/guest)
+
+The Blazor UI is **not** part of `docker compose up` — see [Running the UI](#running-the-ui) below.
 
 ### Try the API
 
@@ -119,14 +122,14 @@ This triggers:
 
 **Step 5: Verify planet sync on SatelliteService**
 ```bash
-curl http://localhost:6000/api/s/planet \
+curl http://localhost:6001/api/s/planet \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
 You should see all planets including the newly created Saturn.
 
 **Step 6: Create a satellite for a planet**
 ```bash
-curl -X POST http://localhost:6000/api/s/planets/1/satellite \
+curl -X POST http://localhost:6001/api/s/planets/1/satellite \
   -H "Authorization: Bearer YOUR_TOKEN_HERE" \
   -H "Content-Type: application/json" \
   -d '{"name": "Titan", "type": "Natural"}'
@@ -134,7 +137,7 @@ curl -X POST http://localhost:6000/api/s/planets/1/satellite \
 
 **Step 7: Get satellites for a planet**
 ```bash
-curl http://localhost:6000/api/s/planets/1/satellite \
+curl http://localhost:6001/api/s/planets/1/satellite \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
 
@@ -144,6 +147,46 @@ curl http://localhost:6000/api/s/planets/1/satellite \
 docker compose down        # stop and remove containers
 docker compose down -v     # also remove the MSSQL data volume
 ```
+
+## Running the UI
+
+The Blazor WebAssembly client is a separate project. It is **not** started by `docker compose`
+because its API base URLs are baked into `wwwroot/appsettings.json` at build time and are set
+for local-host usage. Run it in parallel to the backend:
+
+```bash
+# 1. Start the backend (from the repo root)
+docker compose up --build
+
+# 2. In a second terminal — start the UI dev server
+dotnet run --project PlanetsSatellites.Web
+```
+
+Open http://localhost:5257. You can:
+- **Register** a new account (persisted in `AuthDb` on SQL Server).
+- **Log in** — a JWT is stored in `localStorage`; every subsequent API call adds `Authorization: Bearer …` automatically.
+- **Browse planets** — the table shows a live **Replication** column that times RabbitMQ propagation to SatelliteService for every planet you create.
+- **Open a planet** — add satellites (Natural / Artificial) and see them stored in SatelliteService.
+- Each page has an expandable **"Under the hood"** panel explaining which services, protocols and storage are touched by that view.
+
+The UI reads API endpoints from `PlanetsSatellites.Web/wwwroot/appsettings.json`:
+
+```json
+{
+  "Apis": {
+    "Auth":      "http://localhost:7000",
+    "Planet":    "http://localhost:5000",
+    "Satellite": "http://localhost:6001"
+  }
+}
+```
+
+CORS is allow-listed for `http://localhost:5257` on all three backend services (override with the
+`Cors:AllowedOrigins` configuration key / env var).
+
+> **Chrome note:** the satellite host port is **6001**, not 6000 — Chrome blocks `:6000` as
+> `ERR_UNSAFE_PORT` (reserved for X11). The container still listens on 6000 internally; only the
+> host mapping changed.
 
 ## Running Tests
 
@@ -171,6 +214,14 @@ dotnet run --project SatelliteService
 PlanetService uses an in-memory database in development mode, so no SQL Server is needed for it.
 SatelliteService always uses an in-memory database.
 AuthService requires SQL Server for ASP.NET Core Identity.
+
+The UI can be started the same way:
+
+```bash
+dotnet run --project PlanetsSatellites.Web
+```
+
+then browse http://localhost:5257.
 
 ## Kubernetes Deployment
 
@@ -306,17 +357,28 @@ PlanetsSatellites/
 │   ├── Controllers/            # Auth endpoints (register, login)
 │   ├── Data/                   # Identity DbContext
 │   └── Models/                 # User and auth models
+├── PlanetsSatellites.Web/      # Blazor WebAssembly UI (MudBlazor)
+│   ├── Components/             # Reusable UI components (TechInfoPanel)
+│   ├── Layout/                 # Main layout + nav menu
+│   ├── Models/                 # DTOs mirroring backend contracts
+│   ├── Pages/                  # Home / Register / Login / Planets / PlanetDetails + dialogs
+│   ├── Services/               # API clients, JWT auth state provider, Bearer handler
+│   └── wwwroot/                # Static assets + appsettings.json with API URLs
 ├── PlanetService.Tests/        # Unit tests for PlanetService
 ├── SatelliteService.Tests/     # Unit tests for SatelliteService
 ├── AuthService.Tests/          # Unit tests for AuthService
 ├── K8S/                        # Kubernetes deployment manifests
 ├── docker-compose.yml          # Docker Compose for local development
+├── BACKLOG.md                  # Prioritised improvements (senior/staff-level gaps)
 └── PlanetsSatellites.sln       # Solution file
 ```
 
 ## Docker Images
 
-Pre-built images are available on Docker Hub:
+Pre-built images for the three backend services are available on Docker Hub:
 - [dgluhotorenko/planetservice](https://hub.docker.com/r/dgluhotorenko/planetservice)
 - [dgluhotorenko/satelliteservice](https://hub.docker.com/r/dgluhotorenko/satelliteservice)
 - [dgluhotorenko/authservice](https://hub.docker.com/r/dgluhotorenko/authservice)
+
+The Blazor UI is not published as a Docker image — it's a static-file bundle and the API URLs are
+baked into the WASM build. Run it locally with `dotnet run --project PlanetsSatellites.Web`.

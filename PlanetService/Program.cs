@@ -15,6 +15,17 @@ builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks();
 
+const string WebClientCors = "WebClient";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(WebClientCors, policy => policy
+        .WithOrigins(
+            builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                ?? ["http://localhost:5257"])
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
+
 if (builder.Environment.IsProduction())
 {
     builder.Services.AddDbContext<AppDbContext>(options =>
@@ -58,6 +69,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(o => o.SwaggerEndpoint("/swagger/v1/swagger.json", "PlanetService v1"));
 }
+
+app.UseCors(WebClientCors);
 
 // Authentication & authorization must precede endpoint mapping
 app.UseAuthentication();

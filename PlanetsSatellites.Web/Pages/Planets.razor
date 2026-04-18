@@ -1,0 +1,223 @@
+@page "/planets"
+@attribute [Authorize]
+@using System.Diagnostics
+@inject PlanetApiClient PlanetApi
+@inject SatelliteApiClient SatelliteApi
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Planets</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+    <MudText Typo="Typo.h4">Planets</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialogAsync">
+        Add planet
+    </MudButton>
+</MudStack>
+
+<MudStack Row="true" Spacing="2" Class="mb-4">
+    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Icon="@Icons.Material.Filled.Http">
+        REST · PlanetService :5000
+    </MudChip>
+    <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Icon="@Icons.Material.Filled.SwapHoriz">
+        RabbitMQ · fanout "trigger"
+    </MudChip>
+    <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" Icon="@Icons.Material.Filled.CloudQueue">
+        REST · SatelliteService :6001 (replica)
+    </MudChip>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else
+{
+    <MudTable Items="_rows" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="2">
+        <HeaderContent>
+            <MudTh>ID</MudTh>
+            <MudTh>Name</MudTh>
+            <MudTh>Mass (10²⁴ kg)</MudTh>
+            <MudTh>Radius (km)</MudTh>
+            <MudTh>Replication (RabbitMQ → SatelliteService)</MudTh>
+            <MudTh Style="width: 1%"></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Source.Id</MudTd>
+            <MudTd><b>@context.Source.Name</b></MudTd>
+            <MudTd>@context.Source.Mass</MudTd>
+            <MudTd>@context.Source.Radius</MudTd>
+            <MudTd>
+                @if (context.Replica is not null)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success"
+                             Icon="@Icons.Material.Filled.CheckCircle">
+                        Replicated@(context.LatencyText is null ? "" : $" · {context.LatencyText}")
+                    </MudChip>
+                }
+                else if (context.Pending)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning"
+                             Icon="@Icons.Material.Filled.HourglassEmpty">
+                        Pending…
+                    </MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error"
+                             Icon="@Icons.Material.Filled.ErrorOutline">
+                        Not replicated
+                    </MudChip>
+                }
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowForward"
+                               Color="Color.Primary" Size="Size.Small"
+                               Href="@($"/planets/{context.Source.Id}")" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>No planets yet. Create the first one!</MudText>
+        </NoRecordsContent>
+    </MudTable>
+}
+
+<TechInfoPanel Title="How this page works">
+    <Body>
+        <p><b>Left side of the table</b> is fetched synchronously from <code>PlanetService</code>
+        via <b>REST GET /api/planet</b> (port 5000). The JWT is attached by an HttpClient
+        <code>DelegatingHandler</code>. In this dev setup the planets live in an
+        <b>EF Core InMemory</b> database, so they reset with the container.</p>
+
+        <p><b>Right column ("Replication")</b> is fetched in parallel from <code>SatelliteService</code>
+        via <b>REST GET /api/s/planet</b> (port 6001). Those planets got there <i>asynchronously</i>:
+        they were pushed through a <b>RabbitMQ fanout exchange</b> named <code>"trigger"</code>
+        by <code>PlanetService.MessageBusDataClient</code>, consumed by
+        <code>SatelliteService.MessageBusSubscriber</code>, and inserted by
+        <code>EventProcessor</code> into SatelliteService's own InMemory DB.</p>
+
+        <p><b>When you create a planet here:</b></p>
+        <ol>
+            <li>Blazor sends <code>POST /api/planet</code> with your Bearer token (REST).</li>
+            <li>PlanetService saves the row (EF InMemory), tries a synchronous HTTP notification to SatelliteService (fire-and-forget, logs warning on failure), and then publishes a <code>Planet_Published</code> event to RabbitMQ.</li>
+            <li>SatelliteService's background subscriber picks it up and creates a local copy.</li>
+            <li>The UI polls <code>/api/s/planet</code> until your planet appears and measures end-to-end replication latency.</li>
+        </ol>
+
+        <p>On SatelliteService <b>startup</b> there's also a one-shot <b>gRPC</b> call to
+        PlanetService's <code>GrpcPlanetService</code> (port 50051) to bulk-fetch all existing
+        planets — that's how the 5 seeded planets get replicated without any bus traffic.</p>
+    </Body>
+</TechInfoPanel>
+
+@code {
+    private sealed record PlanetRow(PlanetDto Source, ReplicatedPlanetDto? Replica, bool Pending, string? LatencyText);
+
+    private List<PlanetRow> _rows = [];
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        var sourceTask = PlanetApi.GetAllAsync();
+        var replicaTask = SatelliteApi.GetReplicatedPlanetsAsync();
+        await Task.WhenAll(sourceTask, replicaTask);
+
+        var sourceResult = await sourceTask;
+        var replicaResult = await replicaTask;
+
+        if (!sourceResult.Success)
+        {
+            _error = sourceResult.Error;
+            _loading = false;
+            return;
+        }
+
+        var replicaByExt = (replicaResult.Value ?? [])
+            .ToDictionary(r => r.ExternalId);
+
+        _rows = (sourceResult.Value ?? [])
+            .Select(p => new PlanetRow(
+                Source: p,
+                Replica: replicaByExt.GetValueOrDefault(p.Id),
+                Pending: false,
+                LatencyText: null))
+            .ToList();
+
+        _loading = false;
+    }
+
+    private async Task OpenCreateDialogAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<CreatePlanetDialog>("Create planet");
+        var outcome = await dialog.Result;
+        if (outcome is { Canceled: false, Data: PlanetDto created })
+        {
+            Snackbar.Add(
+                $"Saved '{created.Name}' to PlanetService (InMemory). " +
+                "Event published to RabbitMQ fanout 'trigger'. Watching SatelliteService replica…",
+                Severity.Info);
+
+            _rows.Add(new PlanetRow(created, null, Pending: true, null));
+            StateHasChanged();
+
+            await WaitForReplicationAsync(created);
+        }
+    }
+
+    private async Task WaitForReplicationAsync(PlanetDto created)
+    {
+        var sw = Stopwatch.StartNew();
+        const int maxAttempts = 20; // 10 seconds @ 500ms
+
+        for (var i = 0; i < maxAttempts; i++)
+        {
+            await Task.Delay(500);
+
+            var replicas = await SatelliteApi.GetReplicatedPlanetsAsync();
+            if (!replicas.Success) continue;
+
+            var replica = replicas.Value?.FirstOrDefault(r => r.ExternalId == created.Id);
+            if (replica is null) continue;
+
+            var idx = _rows.FindIndex(r => r.Source.Id == created.Id);
+            if (idx >= 0)
+            {
+                _rows[idx] = _rows[idx] with
+                {
+                    Replica = replica,
+                    Pending = false,
+                    LatencyText = $"{sw.ElapsedMilliseconds} ms"
+                };
+                StateHasChanged();
+            }
+
+            Snackbar.Add(
+                $"SatelliteService replicated '{created.Name}' via RabbitMQ in {sw.ElapsedMilliseconds} ms.",
+                Severity.Success);
+            return;
+        }
+
+        var stuck = _rows.FindIndex(r => r.Source.Id == created.Id);
+        if (stuck >= 0)
+        {
+            _rows[stuck] = _rows[stuck] with { Pending = false };
+            StateHasChanged();
+        }
+
+        Snackbar.Add(
+            "Replication timeout (>10s). Check RabbitMQ — is SatelliteService subscriber alive?",
+            Severity.Warning);
+    }
+}

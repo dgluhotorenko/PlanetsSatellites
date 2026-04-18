@@ -1,0 +1,24 @@
+@* Reusable "Under the hood" expansion panel. Pass a title + markup explaining the flow. *@
+
+<MudPaper Class="mt-6 pa-0" Elevation="0" Outlined="true">
+    <MudExpansionPanels Elevation="0">
+        <MudExpansionPanel>
+            <TitleContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                    <MudText Typo="Typo.subtitle2">@Title</MudText>
+                </MudStack>
+            </TitleContent>
+            <ChildContent>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    @Body
+                </MudText>
+            </ChildContent>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+</MudPaper>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Under the hood";
+    [Parameter] public RenderFragment? Body { get; set; }
+}

@@ -1,0 +1,85 @@
+@page "/login"
+@inject AuthApiClient AuthApi
+@inject JwtAuthStateProvider AuthProvider
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Login</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small">
+    <MudPaper Class="pa-8" Elevation="4">
+        <MudStack Spacing="4">
+            <MudText Typo="Typo.h4" Align="Align.Center">Welcome back</MudText>
+
+            <EditForm Model="@_model" OnValidSubmit="SubmitAsync">
+                <DataAnnotationsValidator />
+                <MudStack Spacing="3">
+                    <MudTextField @bind-Value="_model.Email" Label="Email" For="@(() => _model.Email)"
+                                  Variant="Variant.Outlined" InputType="InputType.Email" ShrinkLabel="true" />
+                    <MudTextField @bind-Value="_model.Password" Label="Password" For="@(() => _model.Password)"
+                                  Variant="Variant.Outlined" InputType="InputType.Password" ShrinkLabel="true" />
+
+                    @if (_error is not null)
+                    {
+                        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                    }
+
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                               FullWidth="true" Disabled="_busy" Size="Size.Large">
+                        @if (_busy)
+                        {
+                            <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+                        }
+                        Login
+                    </MudButton>
+
+                    <MudText Typo="Typo.body2" Align="Align.Center">
+                        No account yet? <MudLink Href="/register">Register</MudLink>
+                    </MudText>
+                </MudStack>
+            </EditForm>
+        </MudStack>
+    </MudPaper>
+
+    <TechInfoPanel Title="How login works">
+        <Body>
+            <p>The form posts <code>{ email, password }</code> to <code>POST /api/auth/login</code>
+            on <b>AuthService</b> (:7000). AuthService uses <b>ASP.NET Core Identity</b> backed by
+            <b>SQL Server</b> (container <code>mssql</code>, database <code>AuthDb</code>) —
+            the only service with persistent state in this demo.</p>
+
+            <p>On success, AuthService signs a <b>JWT (HS256)</b> with claims
+            <code>name</code>, <code>email</code>, <code>jti</code>, expiring in 30 min.
+            Blazor stores the token in <code>localStorage</code> via <code>Blazored.LocalStorage</code>.
+            A custom <code>DelegatingHandler</code> auto-attaches <code>Authorization: Bearer …</code>
+            to every PlanetService / SatelliteService request. The same signing key + issuer +
+            audience are used by all three services for validation.</p>
+
+        </Body>
+    </TechInfoPanel>
+</MudContainer>
+
+@code {
+    private readonly LoginRequest _model = new();
+    private bool _busy;
+    private string? _error;
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _error = null;
+
+        var result = await AuthApi.LoginAsync(_model);
+
+        if (!result.Success || result.Value is null)
+        {
+            _error = result.Error;
+            _busy = false;
+            return;
+        }
+
+        await AuthProvider.MarkUserAsAuthenticatedAsync(result.Value.Token);
+        Snackbar.Add("Signed in.", Severity.Success);
+        Nav.NavigateTo("/planets");
+    }
+}

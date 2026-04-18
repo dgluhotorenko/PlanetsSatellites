@@ -15,6 +15,17 @@ builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks();
 
+const string WebClientCors = "WebClient";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(WebClientCors, policy => policy
+        .WithOrigins(
+            builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                ?? ["http://localhost:5257"])
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
+
 // In production, use a real database (SQL Server, PostgreSQL, etc.) instead of InMemory
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseInMemoryDatabase("SatelliteDb"));
@@ -49,6 +60,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(o => o.SwaggerEndpoint("/swagger/v1/swagger.json", "SatelliteService v1"));
 }
+
+app.UseCors(WebClientCors);
 
 app.UseAuthentication();
 app.UseAuthorization();

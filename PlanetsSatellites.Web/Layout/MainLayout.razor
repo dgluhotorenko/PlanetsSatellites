@@ -1,0 +1,50 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject JwtAuthStateProvider AuthProvider
+
+<MudThemeProvider IsDarkMode="true" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudIcon Icon="@Icons.Material.Filled.Public" Size="Size.Large" Class="mr-3" />
+        <MudText Typo="Typo.h6">Planets &amp; Satellites</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudText Typo="Typo.body2" Class="mr-4">
+                    @context.User.Identity?.Name
+                </MudText>
+                <MudButton Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.Logout"
+                           OnClick="LogoutAsync">
+                    Logout
+                </MudButton>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Color="Color.Inherit" Href="/login">Login</MudButton>
+                <MudButton Color="Color.Inherit" Href="/register">Register</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+    </MudAppBar>
+
+    <MudDrawer Open="true" Variant="@DrawerVariant.Mini" OpenMiniOnHover="true" Elevation="1">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 mb-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private async Task LogoutAsync()
+    {
+        await AuthProvider.MarkUserAsLoggedOutAsync();
+        Nav.NavigateTo("/login");
+    }
+}

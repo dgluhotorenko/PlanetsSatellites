@@ -1,0 +1,85 @@
+@page "/register"
+@inject AuthApiClient AuthApi
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Register</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small">
+    <MudPaper Class="pa-8" Elevation="4">
+        <MudStack Spacing="4">
+            <MudText Typo="Typo.h4" Align="Align.Center">Create an account</MudText>
+
+            <EditForm Model="@_model" OnValidSubmit="SubmitAsync">
+                <DataAnnotationsValidator />
+                <MudStack Spacing="3">
+                    <MudTextField @bind-Value="_model.Email" Label="Email" For="@(() => _model.Email)"
+                                  Variant="Variant.Outlined" InputType="InputType.Email" ShrinkLabel="true" />
+                    <MudTextField @bind-Value="_model.Password" Label="Password" For="@(() => _model.Password)"
+                                  Variant="Variant.Outlined" InputType="InputType.Password" ShrinkLabel="true"
+                                  HelperText="At least 10 characters, with upper, lower, digit, symbol." />
+                    <MudTextField @bind-Value="_model.ConfirmPassword" Label="Confirm password"
+                                  For="@(() => _model.ConfirmPassword)"
+                                  Variant="Variant.Outlined" InputType="InputType.Password" ShrinkLabel="true" />
+
+                    @if (_error is not null)
+                    {
+                        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                    }
+
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                               FullWidth="true" Disabled="_busy" Size="Size.Large">
+                        @if (_busy)
+                        {
+                            <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+                        }
+                        Register
+                    </MudButton>
+
+                    <MudText Typo="Typo.body2" Align="Align.Center">
+                        Already have an account? <MudLink Href="/login">Login</MudLink>
+                    </MudText>
+                </MudStack>
+            </EditForm>
+        </MudStack>
+    </MudPaper>
+
+    <TechInfoPanel Title="How registration works">
+        <Body>
+            <p>Blazor posts <code>{ email, password }</code> to <code>POST /api/auth/register</code>
+            on <b>AuthService</b>. AuthService hands it to <code>UserManager&lt;ApplicationUser&gt;</code>
+            from <b>ASP.NET Core Identity</b>, which:</p>
+            <ul>
+                <li>Validates the password against the Identity policy (digit, upper, lower, non-alphanum).</li>
+                <li>Hashes the password with PBKDF2 (HMAC-SHA256, 10 000 iterations by default).</li>
+                <li>Inserts the user into <b>SQL Server</b> (database <code>AuthDb</code>, table <code>AspNetUsers</code>) — this is the only row that survives <code>docker compose down</code>.</li>
+            </ul>
+
+            <p>After success the UI sends you to <code>/login</code> — no auto-login or email confirmation in this demo.</p>
+        </Body>
+    </TechInfoPanel>
+</MudContainer>
+
+@code {
+    private readonly RegisterRequest _model = new();
+    private bool _busy;
+    private string? _error;
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _error = null;
+
+        var result = await AuthApi.RegisterAsync(_model);
+        _busy = false;
+
+        if (!result.Success)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        Snackbar.Add("Registration successful. Please log in.", Severity.Success);
+        Nav.NavigateTo("/login");
+    }
+}

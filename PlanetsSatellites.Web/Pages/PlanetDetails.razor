@@ -1,0 +1,186 @@
+@page "/planets/{PlanetId:int}"
+@attribute [Authorize]
+@inject PlanetApiClient PlanetApi
+@inject SatelliteApiClient SatelliteApi
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Planet @PlanetId</PageTitle>
+
+<MudButton Href="/planets" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-4">
+    Back to planets
+</MudButton>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_planetError is not null)
+{
+    <MudAlert Severity="Severity.Error">@_planetError</MudAlert>
+}
+else if (_planet is not null)
+{
+    <MudPaper Class="pa-6 mb-4" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
+            <MudIcon Icon="@Icons.Material.Filled.Public" Size="Size.Large" Color="Color.Primary"
+                     Style="font-size: 4rem;" />
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h4">@_planet.Name</MudText>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    Mass: @_planet.Mass · 10²⁴ kg &nbsp; · &nbsp; Radius: @_planet.Radius km
+                </MudText>
+                <MudStack Row="true" Spacing="1" Class="mt-1">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary"
+                             Icon="@Icons.Material.Filled.Http">
+                        GET /api/planet/@PlanetId · REST :5000
+                    </MudChip>
+                </MudStack>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudText Typo="Typo.h5">Satellites</MudText>
+        <MudSpacer />
+        @if (_satelliteLocalPlanetId is not null)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="AddSatelliteAsync">
+                Add satellite
+            </MudButton>
+        }
+    </MudStack>
+
+    <MudStack Row="true" Spacing="2" Class="mb-4">
+        <MudChip T="string" Size="Size.Small" Color="Color.Tertiary"
+                 Icon="@Icons.Material.Filled.CloudQueue">
+            REST · SatelliteService :6001
+        </MudChip>
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                 Icon="@Icons.Material.Filled.Storage">
+            Stored only in SatelliteService (InMemory)
+        </MudChip>
+    </MudStack>
+
+    @if (_satelliteLocalPlanetId is null)
+    {
+        <MudAlert Severity="Severity.Warning" Icon="@Icons.Material.Filled.HourglassEmpty">
+            This planet has not been replicated to SatelliteService yet. Satellites live on the
+            replica — so the planet must appear there first (via RabbitMQ for user-created ones,
+            or via gRPC bootstrap for seeded ones). Give it a second and refresh.
+        </MudAlert>
+    }
+    else if (_satellites.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">
+            No satellites for this planet yet.
+        </MudAlert>
+    }
+    else
+    {
+        <MudTable Items="_satellites" Hover="true" Elevation="2">
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Name</MudTh>
+                <MudTh>Type</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Id</MudTd>
+                <MudTd>@context.Name</MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small"
+                             Color="@(context.Type == "Artificial" ? Color.Info : Color.Success)">
+                        @context.Type
+                    </MudChip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+}
+
+<TechInfoPanel Title="How this page works">
+    <Body>
+        <p>The header block is a <b>REST GET /api/planet/{id}</b> on <code>PlanetService</code>
+        (:5000). This is the <b>source of truth</b> for planet metadata.</p>
+
+        <p>The satellites list comes from <code>SatelliteService</code> (:6001). Satellites only
+        exist there — PlanetService has no knowledge of them. The subtle bit: the route parameter
+        <code>{planetId}</code> for satellite endpoints is SatelliteService's <i>local</i> planet id
+        (not PlanetService's Id). So the UI fetches the replicated-planet list, finds the matching
+        <code>ExternalId</code>, and uses the local one. If no match — the planet hasn't been
+        replicated yet and the "Add satellite" button stays hidden.</p>
+
+        <p><b>Creating a satellite</b> is a straight <b>POST /api/s/planets/{localId}/satellite</b>
+        — no RabbitMQ involvement. Satellites don't propagate anywhere, so this is a pure local
+        write.</p>
+    </Body>
+</TechInfoPanel>
+
+@code {
+    [Parameter] public int PlanetId { get; set; }
+
+    private PlanetDto? _planet;
+    private string? _planetError;
+    private bool _loading = true;
+    private int? _satelliteLocalPlanetId;
+    private List<SatelliteDto> _satellites = [];
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _planetError = null;
+        _planet = null;
+        _satellites = [];
+        _satelliteLocalPlanetId = null;
+
+        var planetTask = PlanetApi.GetByIdAsync(PlanetId);
+        var replicasTask = SatelliteApi.GetReplicatedPlanetsAsync();
+        await Task.WhenAll(planetTask, replicasTask);
+
+        var planetResult = await planetTask;
+        if (!planetResult.Success || planetResult.Value is null)
+        {
+            _planetError = planetResult.Error;
+            _loading = false;
+            return;
+        }
+        _planet = planetResult.Value;
+
+        var replicasResult = await replicasTask;
+        if (replicasResult.Success && replicasResult.Value is { } replicas)
+        {
+            var replica = replicas.FirstOrDefault(r => r.ExternalId == PlanetId);
+            if (replica is not null)
+            {
+                _satelliteLocalPlanetId = replica.Id;
+                var satResult = await SatelliteApi.GetForPlanetAsync(replica.Id);
+                if (satResult.Success)
+                    _satellites = satResult.Value?.ToList() ?? [];
+            }
+        }
+
+        _loading = false;
+    }
+
+    private async Task AddSatelliteAsync()
+    {
+        if (_satelliteLocalPlanetId is null) return;
+
+        var parameters = new DialogParameters
+        {
+            [nameof(CreateSatelliteDialog.SatellitePlanetLocalId)] = _satelliteLocalPlanetId.Value
+        };
+        var dialog = await Dialogs.ShowAsync<CreateSatelliteDialog>("New satellite", parameters);
+        var outcome = await dialog.Result;
+        if (outcome is { Canceled: false, Data: SatelliteDto created })
+        {
+            Snackbar.Add(
+                $"Saved '{created.Name}' to SatelliteService (InMemory) · no cross-service propagation.",
+                Severity.Success);
+            await LoadAsync();
+        }
+    }
+}
