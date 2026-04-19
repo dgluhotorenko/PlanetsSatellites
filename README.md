@@ -188,9 +188,9 @@ CORS is allow-listed for `http://localhost:5257` on all three backend services (
 > `ERR_UNSAFE_PORT` (reserved for X11). The container still listens on 6000 internally; only the
 > host mapping changed.
 
-<img width="927" height="698" alt="image" src="https://github.com/user-attachments/assets/25db08b8-7ae5-4217-8611-a98978653483" />
-<img width="944" height="478" alt="image" src="https://github.com/user-attachments/assets/fcaec219-efcb-421e-8021-acb1480302ec" />
-<img width="944" height="747" alt="image" src="https://github.com/user-attachments/assets/7b4b55de-1031-4aff-a146-0f3d961cf883" />
+<img width="927" height="698" alt="Register page" src="docs/ui-register.png" />
+<img width="944" height="478" alt="Planets list with RabbitMQ replication status" src="docs/ui-planets-list.png" />
+<img width="944" height="747" alt="Planet details with satellites" src="docs/ui-planet-details.png" />
 
 ## Running Tests
 
